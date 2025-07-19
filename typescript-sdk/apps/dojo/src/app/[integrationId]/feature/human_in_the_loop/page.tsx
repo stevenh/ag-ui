@@ -94,9 +94,9 @@ const InterruptHumanInTheLoop: React.FC<{
 };
 
 const Chat = () => {
-  useLangGraphInterrupt({
-    render: ({ event, resolve }) => <InterruptHumanInTheLoop event={event} resolve={resolve} />,
-  });
+  // useLangGraphInterrupt({
+  //   render: ({ event, resolve }) => <InterruptHumanInTheLoop event={event} resolve={resolve} />,
+  // });
   useCopilotAction({
     name: "generate_task_steps",
     description: "Generates a list of steps for the user to perform",

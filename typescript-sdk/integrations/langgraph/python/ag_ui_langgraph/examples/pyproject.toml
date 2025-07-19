@@ -8,7 +8,8 @@ packages = [{ include = "agents" }]
 
 [tool.poetry.dependencies]
 python = "<3.14,>=3.10"
-ag-ui-langgraph = { version = "0.0.3", extras = ["fastapi"] }
+#ag-ui-langgraph = { version = "0.0.3", extras = ["fastapi"] }
+ag-ui-langgraph = { path = "../../", develop = true }
 python-dotenv = "^1.0.0"
 fastapi = "^0.115.12"
 uvicorn = "^0.34.3"

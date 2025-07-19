@@ -85,6 +85,7 @@ class LangGraphAgent:
         self.messages_in_process: MessagesInProgressRecord = {}
         self.active_run: Optional[RunMetadata] = None
         self.constant_schema_keys = ['messages', 'tools']
+        print("XXXX- LangGraphAgent initialized with name:", self.name)
 
     def _dispatch_event(self, event: ProcessedEvents) -> str:
         return event  # Fallback if no encoder
@@ -197,6 +198,7 @@ class LangGraphAgent:
                 state = updated_state
                 self.active_run["prev_node_name"] = self.active_run["node_name"]
                 current_graph_state.update(updated_state)
+                print("XXXX- STATE_SNAPSHOT2")
                 yield self._dispatch_event(
                     StateSnapshotEvent(
                         type=EventType.STATE_SNAPSHOT,
@@ -244,16 +246,17 @@ class LangGraphAgent:
             )
 
         state_values = state.values if state.values else state
-        yield self._dispatch_event(
-            StateSnapshotEvent(type=EventType.STATE_SNAPSHOT, snapshot=self.get_state_snapshot(state_values))
-        )
+        # print("XXXX- STATE_SNAPSHOT1")
+        # yield self._dispatch_event(
+        #     StateSnapshotEvent(type=EventType.STATE_SNAPSHOT, snapshot=self.get_state_snapshot(state_values))
+        # )
 
-        yield self._dispatch_event(
-            MessagesSnapshotEvent(
-                type=EventType.MESSAGES_SNAPSHOT,
-                messages=langchain_messages_to_agui(state_values.get("messages", [])),
-            )
-        )
+        # yield self._dispatch_event(
+        #     MessagesSnapshotEvent(
+        #         type=EventType.MESSAGES_SNAPSHOT,
+        #         messages=langchain_messages_to_agui(state_values.get("messages", [])),
+        #     )
+        # )
 
         yield self._dispatch_event(
             StepFinishedEvent(type=EventType.STEP_FINISHED, step_name=self.active_run["node_name"])
@@ -601,10 +604,11 @@ class LangGraphAgent:
 
             elif event["name"] == CustomEventNames.ManuallyEmitState:
                 self.active_run["manually_emitted_state"] = event["data"]
+                print("XXXX- STATE_SNAPSHOT3")
                 yield self._dispatch_event(
                     StateSnapshotEvent(type=EventType.STATE_SNAPSHOT, snapshot=self.get_state_snapshot(self.active_run["manually_emitted_state"]), raw_event=event)
                 )
-            
+
             yield self._dispatch_event(
                 CustomEvent(type=EventType.CUSTOM, name=event["name"], value=event["data"], raw_event=event)
             )
