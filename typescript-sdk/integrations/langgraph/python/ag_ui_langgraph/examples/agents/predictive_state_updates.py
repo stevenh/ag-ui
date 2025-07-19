@@ -5,6 +5,7 @@ A demo of predictive state updates using LangGraph.
 import json
 import uuid
 from typing import Dict, List, Any, Optional
+import logging
 
 # LangGraph imports
 from langchain_core.runnables import RunnableConfig
@@ -16,31 +17,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 
-WRITE_DOCUMENT_TOOL = {
-    "type": "function",
-    "function": {
-        "name": "write_document",
-        "description": " ".join("""
-            Write a document. Use markdown formatting to format the document.
-            It's good to format the document extensively so it's easy to read.
-            You can use all kinds of markdown.
-            However, do not use italic or strike-through formatting, it's reserved for another purpose.
-            You MUST write the full document, even when changing only a few words.
-            When making edits to the document, try to make them minimal - do not change every word.
-            Keep stories SHORT!
-            """.split()),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "document": {
-                    "type": "string",
-                    "description": "The document to write"
-                },
-            },
-        }
-    }
-}
-
+_LOGGER = logging.getLogger(__name__)
 
 class AgentState(MessagesState):
     """
@@ -63,19 +40,20 @@ async def chat_node(state: AgentState, config: RunnableConfig):
     """
     Standard chat node.
     """
+    print("XXXX- here")
 
     system_prompt = f"""
-    You are a helpful assistant for writing documents. 
+    You are a helpful assistant for writing documents.
     To write the document, you MUST use the write_document tool.
     You MUST write the full document, even when changing only a few words.
-    When you wrote the document, DO NOT repeat it as a message. 
+    When you wrote the document, DO NOT repeat it as a message.
     Just briefly summarize the changes you made. 2 sentences max.
     This is the current state of the document: ----\n {state.get('document')}\n-----
     """
 
     # Define the model
     model = ChatOpenAI(model="gpt-4o")
-    
+
     # Define config for the model with emit_intermediate_state to stream tool calls to frontend
     if config is None:
         config = RunnableConfig(recursion_limit=25)
@@ -87,11 +65,11 @@ async def chat_node(state: AgentState, config: RunnableConfig):
         "tool_argument": "document"
     }]
 
+
     # Bind the tools to the model
     model_with_tools = model.bind_tools(
         [
             *state["tools"],
-            WRITE_DOCUMENT_TOOL
         ],
         # Disable parallel tool calls to avoid race conditions
         parallel_tool_calls=False,
@@ -105,55 +83,57 @@ async def chat_node(state: AgentState, config: RunnableConfig):
 
     # Update messages with the response
     messages = state["messages"] + [response]
-    
-    # Extract any tool calls from the response
-    if hasattr(response, "tool_calls") and response.tool_calls:
-        tool_call = response.tool_calls[0]
-        
-        # Handle tool_call as a dictionary or an object
-        if isinstance(tool_call, dict):
-            tool_call_id = tool_call["id"]
-            tool_call_name = tool_call["name"]
-            tool_call_args = tool_call["args"]
-        else:
-            # Handle as an object (backward compatibility)
-            tool_call_id = tool_call.id
-            tool_call_name = tool_call.name
-            tool_call_args = tool_call.args
 
-        if tool_call_name == "write_document":
-            # Add the tool response to messages
-            tool_response = {
-                "role": "tool",
-                "content": "Document written.",
-                "tool_call_id": tool_call_id
-            }
-            
-            # Add confirmation tool call
-            confirm_tool_call = {
-                "role": "assistant",
-                "content": "",
-                "tool_calls": [{
-                    "id": str(uuid.uuid4()),
-                    "function": {
-                        "name": "confirm_changes",
-                        "arguments": "{}"
-                    }
-                }]
-            }
-            
-            messages = messages + [tool_response, confirm_tool_call]
-            
-            # Return Command to route to end
-            return Command(
-                goto=END,
-                update={
-                    "messages": messages,
-                    "document": tool_call_args["document"]
-                }
-            )
-    
+    # Extract any tool calls from the response
+    # if hasattr(response, "tool_calls") and response.tool_calls:
+    #     tool_call = response.tool_calls[0]
+
+    #     # Handle tool_call as a dictionary or an object
+    #     if isinstance(tool_call, dict):
+    #         tool_call_id = tool_call["id"]
+    #         tool_call_name = tool_call["name"]
+    #         tool_call_args = tool_call["args"]
+    #     else:
+    #         # Handle as an object (backward compatibility)
+    #         tool_call_id = tool_call.id
+    #         tool_call_name = tool_call.name
+    #         tool_call_args = tool_call.args
+
+        # if tool_call_name == "write_document":
+        #     # Add the tool response to messages
+        #     tool_response = {
+        #         "role": "tool",
+        #         "content": "Document written.",
+        #         "tool_call_id": tool_call_id
+        #     }
+
+        #     # Add confirmation tool call
+        #     confirm_tool_call = {
+        #         "role": "assistant",
+        #         "content": "",
+        #         "tool_calls": [{
+        #             "id": str(uuid.uuid4()),
+        #             "function": {
+        #                 "name": "confirm_changes",
+        #                 "arguments": "{}"
+        #             }
+        #         }]
+        #     }
+
+        #     messages = messages + [tool_response, confirm_tool_call]
+
+        #     # Return Command to route to end
+        #     return Command(
+        #         goto=END,
+        #         update={
+        #             "messages": messages,
+        #             "document": tool_call_args["document"]
+        #         }
+        #     )
+
     # If no tool was called, go to end
+    _LOGGER.info("XXX messages: %s", messages)
+    print("XXXX- messages:", messages)
     return Command(
         goto=END,
         update={

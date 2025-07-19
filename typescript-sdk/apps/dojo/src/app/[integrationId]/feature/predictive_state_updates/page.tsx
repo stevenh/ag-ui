@@ -11,6 +11,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useState } from "react";
 import { CopilotKit, useCoAgent, useCopilotAction, useCopilotChat } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
+import { set } from "zod";
 
 const extensions = [StarterKit];
 
@@ -67,8 +68,13 @@ const DocumentEditor = () => {
     },
   });
   const [placeholderVisible, setPlaceholderVisible] = useState(false);
-  const [currentDocument, setCurrentDocument] = useState("");
+  let [currentDocument, setCurrentDocumentRaw] = useState("");
   const { isLoading } = useCopilotChat();
+  let setCurrentDocument = (text: string) => {
+    console.log("Setting current document1:", text);
+    console.trace("Setting current document2:", text);
+    setCurrentDocumentRaw(text);
+  }
 
   const {
     state: agentState,
@@ -84,8 +90,9 @@ const DocumentEditor = () => {
   useEffect(() => {
     if (isLoading) {
       setCurrentDocument(editor?.getText() || "");
+      editor?.setEditable(false);
     }
-    editor?.setEditable(!isLoading);
+    //editor?.setEditable(!isLoading);
   }, [isLoading]);
 
   useEffect(() => {
@@ -119,7 +126,9 @@ const DocumentEditor = () => {
   useEffect(() => {
     setPlaceholderVisible(text.length === 0);
 
+    console.log("isLoading:", isLoading, "text:", text, "currentDocument:", currentDocument);
     if (!isLoading) {
+      console.log("Setting agent state with text:", text);
       setCurrentDocument(text);
       setAgentState({
         document: text,
@@ -138,6 +147,7 @@ const DocumentEditor = () => {
       },
     ],
     renderAndWaitForResponse({ args, status, respond }) {
+      console.log("renderAndWaitForResponse: status:", status, "text:", text, "args:", args, "isLoading:", isLoading);
       if (status === "executing") {
         return (
           <ConfirmChanges
@@ -145,10 +155,12 @@ const DocumentEditor = () => {
             respond={respond}
             status={status}
             onReject={() => {
+              console.log("onReject:", currentDocument, "text:", text);
               editor?.commands.setContent(fromMarkdown(currentDocument));
               setAgentState({ document: currentDocument });
             }}
             onConfirm={() => {
+              console.log("onConfirm:", currentDocument, "text:", text);
               editor?.commands.setContent(fromMarkdown(agentState?.document || ""));
               setCurrentDocument(agentState?.document || "");
               setAgentState({ document: agentState?.document || "" });
